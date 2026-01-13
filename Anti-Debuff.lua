@@ -7,12 +7,20 @@ local LP = Players.LocalPlayer
 local function removeDebuffs()
     local character = LP.Character
     if not character or not character.Parent then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    -- [[ JUMPPOWER FIX ]]
+    if humanoid then
+        -- Forces JumpPower so debuffs don't keep you on the ground
+        humanoid.JumpPower = 50 -- Set to 60 if you want the extra boost
+        humanoid.UseJumpPower = true
+    end
 
     for _, obj in ipairs(character:GetChildren()) do
         local n = obj.Name
         
-        -- [[ BACKGROUND: YOUR EXACT LIST ]]
-        -- These are always removed instantly
+        -- [[ BACKGROUND: ALWAYS REMOVE ]]
         if n == "Ragdoll" or n == "Down" or n == "Stun" or n == "Combat" 
         or n == "Aggro" or n == "Health" or n == "Stamina" 
         or n:lower():find("cooldown") or n:lower():find("activate") or n:lower():find("slow") then
@@ -20,14 +28,13 @@ local function removeDebuffs()
         end
 
         -- [[ TOGGLE CONTROLLED: BUSY ]]
-        -- Only removed when the "No Stun" toggle is ON
         if getgenv().NoStun and n == "Busy" then
             pcall(function() obj:Destroy() end)
         end
     end
 end
 
--- Your 0.1s Loop
+-- Your 0.3s Loop
 task.spawn(function()
     while true do
         removeDebuffs()
