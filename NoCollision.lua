@@ -1,38 +1,47 @@
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
-local groupName = "AuroraNoCol"
+local LocalPlayer = Players.LocalPlayer
+local groupName = "OnlyMeNoCol"
 
+-- 1. Setup the Group to ignore "Default" (everyone else)
 pcall(function()
-    PhysicsService:RegisterCollisionGroup(groupName)
+    if not PhysicsService:IsCollisionGroupRegistered(groupName) then
+        PhysicsService:RegisterCollisionGroup(groupName)
+    end
 end)
+-- This makes the group NOT collide with the standard 'Default' group
+PhysicsService:CollisionGroupSetCollidable(groupName, "Default", false)
+-- This makes sure you don't collide with yourself/other ghost parts
 PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
 
-local function applyCollisionState(char, state)
+local function applyMyCollision(state)
+    local char = LocalPlayer.Character
     if not char then return end
+    
     local group = state and groupName or "Default"
+    
     for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
             part.CollisionGroup = group
-        elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
-            part.Handle.CollisionGroup = group
+        elseif part:IsA("Accessory") then
+            local handle = part:FindFirstChild("Handle")
+            if handle then handle.CollisionGroup = group end
         end
     end
 end
 
-local function toggleNoClip(state)
-    getgenv().NoCollisionPlayer = state
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            applyCollisionState(player.Character, state)
-        end
+-- 2. Handle Respawning (Since your game has custom respawn scripts)
+LocalPlayer.CharacterAdded:Connect(function(character)
+    if getgenv().NoCollisionPlayer then
+        -- task.defer waits for the game's custom health/respawn scripts to finish
+        task.defer(function()
+            applyMyCollision(true)
+        end)
     end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        if getgenv().NoCollisionPlayer then
-            task.wait(0.1) 
-            applyCollisionState(character, true)
-        end
-    end)
 end)
+
+-- 3. Rayfield Connection Function
+local function toggleOnlyMe(state)
+    getgenv().NoCollisionPlayer = state
+    applyMyCollision(state)
+end
