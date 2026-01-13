@@ -1,60 +1,76 @@
-local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local groupName = "AuroraLazy"
-local Range = 25
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
--- Setup Group once
-pcall(function()
-    if not PhysicsService:IsCollisionGroupRegistered(groupName) then
-        PhysicsService:RegisterCollisionGroup(groupName)
+local DIST_THRESHOLD = 20 
+local CHECK_SPEED = 0.1 -- Runs 10 times a second instead of 60 (Huge FPS gain)
+local lastCheck = 0
+
+local npcCache = {}
+
+-- Function to refresh the list of NPCs (Runs slowly in background)
+local function updateNPCCache()
+    local newCache = {}
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") and obj ~= LocalPlayer.Character then
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp then table.insert(newCache, obj) end
+        end
+    end
+    npcCache = newCache
+end
+
+-- Refresh NPC list every 5 seconds so we don't scan Workspace constantly
+task.spawn(function()
+    while true do
+        updateNPCCache()
+        task.wait(5)
     end
 end)
-PhysicsService:CollisionGroupSetCollidable(groupName, "Default", false)
 
-local function setCharGroup(char, isGhost)
-    if not char then return end
-    local group = isGhost and groupName or "Default"
-    for _, part in ipairs(char:GetChildren()) do
-        if part:IsA("BasePart") and part.CollisionGroup ~= group then
-            part.CollisionGroup = group
+local function fixModelCollision(model, localPos, state)
+    local hrp = model:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local dist = (hrp.Position - localPos).Magnitude
+    local shouldCollide = (dist >= DIST_THRESHOLD) or (not state)
+
+    for _, part in ipairs(model:GetChildren()) do
+        if part:IsA("BasePart") then
+            -- ONLY change if the state is different (Crucial for FPS)
+            if part.CanCollide ~= shouldCollide then
+                part.CanCollide = shouldCollide
+            end
         end
     end
 end
 
--- This loop is the "Brain" - it runs slowly to save FPS
-task.spawn(function()
-    while true do
-        task.wait(0.8) -- Slow check (Huge FPS boost)
-        
-        if getgenv().NoCollisionPlayer then
-            local myChar = LP.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            
-            if myRoot then
-                local foundAnyone = false
-                
-                -- Check if ANYONE is close
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if player ~= LP and player.Character then
-                        local hisRoot = player.Character:FindFirstChild("HumanoidRootPart")
-                        if hisRoot and (myRoot.Position - hisRoot.Position).Magnitude < Range then
-                            foundAnyone = true
-                            break
-                        end
-                    end
-                end
-                
-                -- Only change YOUR character's physics if someone is actually near
-                if foundAnyone then
-                    setCharGroup(myChar, true)
-                else
-                    setCharGroup(myChar, false)
-                end
-            end
+-- MAIN LOOP
+RunService.Heartbeat:Connect(function()
+    if not getgenv().NoCollisionPlayer then return end
+    
+    -- Throttle the check speed
+    local now = tick()
+    if now - lastCheck < CHECK_SPEED then return end
+    lastCheck = now
+
+    local char = LocalPlayer.Character
+    local localHRP = char and char:FindFirstChild("HumanoidRootPart")
+    if not localHRP then return end
+    local localPos = localHRP.Position
+
+    -- 1. Check Players
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            fixModelCollision(plr.Character, localPos, true)
+        end
+    end
+
+    -- 2. Check Cached NPCs (Fastest way)
+    for _, npc in ipairs(npcCache) do
+        if npc and npc.Parent then
+            fixModelCollision(npc, localPos, true)
         end
     end
 end)
-
--- Rayfield Toggle just sets the variable
--- Callback = function(Value) getgenv().NoCollisionPlayer = Value end
