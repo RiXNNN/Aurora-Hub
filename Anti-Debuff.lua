@@ -2,51 +2,65 @@ if getgenv().__ANTI_DEBUFF_LOADED then return end
 getgenv().__ANTI_DEBUFF_LOADED = true
 
 local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
 
-local BACKGROUND_DEBUFFS = {
-    ["Busy"] = true,
-    ["Ragdoll"] = true,
-    ["Down"] = true,
-    ["Combat"] = true,
-    ["Aggro"] = true,
-    ["Health"] = true,
-    ["Stamina"] = true
+-- Background debuffs (Always on)
+local BACKGROUND = {
+    Ragdoll = true, Down = true, Combat = true, 
+    Aggro = true, Health = true, Stamina = true,
+    Stun= true
 }
 
-local function removeDebuffs(char)
-    if not char then return end
-    for _, obj in ipairs(char:GetChildren()) do
+local function removeDebuffs()
+    if not character or not character.Parent then return end
+
+    for _, obj in ipairs(character:GetChildren()) do
         local n = obj.Name
-        -- Background removals (Always On)
-        if BACKGROUND_DEBUFFS[n] or n:lower():find("cooldown") then
+        
+        -- 1. YOUR BACKGROUND LOGIC
+        if BACKGROUND[n] or n:lower():find("cooldown") then
             pcall(function() obj:Destroy() end)
         end
-        -- Toggle removals (Only if NoStun is true)
-        if getgenv().NoStun then
-            if n == "Stun" or n:lower():find("activate") then
-                pcall(function() obj:Destroy() end)
-            end
+
+        -- 2. TOGGLE: BUSY (Testing if this fixes speed)
+        if getgenv().NoBusy and n == "Busy" then
+            pcall(function() obj:Destroy() end)
+        end
+
+        -- 3. TOGGLE: STUN
+        if getgenv().NoStun and (n == "Stun" or n:lower():find("activate")) then
+            pcall(function() obj:Destroy() end)
+        end
+        
+        -- 4. TOGGLE: SLOW
+        if getgenv().NoSlow and n:lower():find("slow") then
+            pcall(function() obj:Destroy() end)
         end
     end
 end
 
--- Hook Fall Damage
+-- Your exact loop logic
+task.spawn(function()
+    while true do
+        removeDebuffs()
+        task.wait(0.1)
+    end
+end)
+
+-- Your exact respawn logic
+player.CharacterAdded:Connect(function(char)
+    character = char
+    task.wait(1)
+    removeDebuffs()
+end)
+
+-- Your exact Fall Damage hook
 local old
 old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local args = {...}
     if getnamecallmethod() == "FireServer" and args[2] == "FallDamageServer" then
-        return nil 
+        return task.wait(9e9)
     end
     return old(self, ...)
 end))
-
--- Main Loop
-task.spawn(function()
-    while true do
-        if LP.Character then
-            removeDebuffs(LP.Character)
-        end
-        task.wait(0.1)
-    end
-end)
