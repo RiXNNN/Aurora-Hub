@@ -13,7 +13,7 @@ local function removeDebuffs()
     -- [[ JUMPPOWER FIX ]]
     if humanoid then
         -- Forces JumpPower so debuffs don't keep you on the ground
-        humanoid.JumpPower = 50 -- Set to 60 if you want the extra boost
+        humanoid.JumpPower = 60 -- Set to 60 if you want the extra boost
         humanoid.UseJumpPower = true
     end
 
