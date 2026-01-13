@@ -1,47 +1,50 @@
-local PhysicsService = game:GetService("PhysicsService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local groupName = "OnlyMeNoCol"
+local LP = Players.LocalPlayer
 
--- 1. Setup the Group to ignore "Default" (everyone else)
-pcall(function()
-    if not PhysicsService:IsCollisionGroupRegistered(groupName) then
-        PhysicsService:RegisterCollisionGroup(groupName)
+local nocolConnection = nil
+
+local function startNoCollision()
+    -- Disconnect any old version to prevent stacking lag
+    if nocolConnection then nocolConnection:Disconnect() end
+
+    nocolConnection = RunService.Stepped:Connect(function()
+        local char = LP.Character
+        if not char then return end
+        
+        -- Efficiently target only the main collision parts
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false 
+                -- Note: This makes you walk through players/NPCs
+                -- If you fall through the floor, we need to add a floor check
+            end
+        end
+    end)
+end
+
+local function stopNoCollision()
+    if nocolConnection then
+        nocolConnection:Disconnect()
+        nocolConnection = nil
     end
-end)
--- This makes the group NOT collide with the standard 'Default' group
-PhysicsService:CollisionGroupSetCollidable(groupName, "Default", false)
--- This makes sure you don't collide with yourself/other ghost parts
-PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
-
-local function applyMyCollision(state)
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local group = state and groupName or "Default"
-    
-    for _, part in ipairs(char:GetChildren()) do
-        if part:IsA("BasePart") then
-            part.CollisionGroup = group
-        elseif part:IsA("Accessory") then
-            local handle = part:FindFirstChild("Handle")
-            if handle then handle.CollisionGroup = group end
+    -- Reset character collision to normal
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
         end
     end
 end
 
--- 2. Handle Respawning (Since your game has custom respawn scripts)
-LocalPlayer.CharacterAdded:Connect(function(character)
-    if getgenv().NoCollisionPlayer then
-        -- task.defer waits for the game's custom health/respawn scripts to finish
-        task.defer(function()
-            applyMyCollision(true)
-        end)
+-- RAYFIELD TOGGLE FUNCTION
+local function toggleGhost(Value)
+    getgenv().NoCollisionPlayer = Value
+    if Value then
+        startNoCollision()
+    else
+        stopNoCollision()
     end
-end)
-
--- 3. Rayfield Connection Function
-local function toggleOnlyMe(state)
-    getgenv().NoCollisionPlayer = state
-    applyMyCollision(state)
 end
