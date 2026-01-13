@@ -3,17 +3,30 @@ local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
 local DIST_THRESHOLD = 20 
-local THROTTLE_TIME = 0.2 -- Runs 5 times a second (Still Zero impact on FPS)
+local THROTTLE_TIME = 0.2 
 local lastUpdate = 0
 local collisionStates = {} 
 
+-- Specific names used in Demonfall for katanas
+local KatanaNames = {["Katana"] = true, ["Katana2"] = true, ["Blade"] = true}
+
 local function toggleCollisions(char, shouldCollide)
     if not char then return end
-    -- CHANGED: GetDescendants ensures hats/swords/tools also lose collision
-    for _, part in ipairs(char:GetDescendants()) do
+    
+    -- 1. Fast sweep of main body parts
+    for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
             if part.CanCollide ~= shouldCollide then
                 part.CanCollide = shouldCollide
+            end
+        -- 2. Specifically target the Katana Model if it's found
+        elseif part:IsA("Model") or part:IsA("Tool") then
+            if KatanaNames[part.Name] then
+                for _, kPart in ipairs(part:GetDescendants()) do
+                    if kPart:IsA("BasePart") then
+                        kPart.CanCollide = shouldCollide
+                    end
+                end
             end
         end
     end
@@ -21,7 +34,6 @@ end
 
 RunService.Heartbeat:Connect(function()
     if not getgenv().NoCollisionPlayer then 
-        -- Cleanup if toggle is turned off
         if next(collisionStates) ~= nil then
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then toggleCollisions(player.Character, true) end
@@ -50,7 +62,6 @@ RunService.Heartbeat:Connect(function()
                 local distance = (myPos - hisRoot.Position).Magnitude
                 local inRange = distance < DIST_THRESHOLD
                 
-                -- Only toggle IF the state changed (saves massive FPS)
                 if collisionStates[player] ~= inRange then
                     collisionStates[player] = inRange
                     toggleCollisions(char, not inRange)
