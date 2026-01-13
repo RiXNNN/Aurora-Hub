@@ -1,63 +1,44 @@
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
+local groupName = "LockedGhost"
 
-local DIST_THRESHOLD = 20 
-local THROTTLE_TIME = 0.2 -- Runs 5 times a second (Zero impact on FPS)
-local lastUpdate = 0
+-- 1. Create the "Ghost Layer" (Only runs once)
+pcall(function()
+    if not PhysicsService:IsCollisionGroupRegistered(groupName) then
+        PhysicsService:RegisterCollisionGroup(groupName)
+    end
+end)
+-- This makes anyone in this group unable to touch anyone in "Default"
+PhysicsService:CollisionGroupSetCollidable(groupName, "Default", false)
+PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
 
--- This stores the state so we don't spam the engine with changes
-local collisionStates = {} 
-
-local function toggleCollisions(char, shouldCollide)
+-- 2. The "Lock" Function
+local function lockCollision(char, state)
     if not char then return end
+    local targetGroup = state and groupName or "Default"
+    
     for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
-            if part.CanCollide ~= shouldCollide then
-                part.CanCollide = shouldCollide
+            -- We only touch it if the group is wrong, preventing constant updates
+            if part.CollisionGroup ~= targetGroup then
+                part.CollisionGroup = targetGroup
             end
         end
     end
 end
 
-RunService.Heartbeat:Connect(function()
-    if not getgenv().NoCollisionPlayer then return end
-    
-    local now = tick()
-    if now - lastUpdate < THROTTLE_TIME then return end
-    lastUpdate = now
-
-    local myChar = LP.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    
-    local myPos = myRoot.Position
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            local char = player.Character
-            local hisRoot = char:FindFirstChild("HumanoidRootPart")
-            
-            if hisRoot then
-                local distance = (myPos - hisRoot.Position).Magnitude
-                local inRange = distance < DIST_THRESHOLD
-                
-                -- ONLY update if the player's "InRange" status changed
-                if collisionStates[player] ~= inRange then
-                    collisionStates[player] = inRange
-                    toggleCollisions(char, not inRange)
+-- 3. The Low-Impact Monitor (Runs every 2 seconds)
+task.spawn(function()
+    while true do
+        if getgenv().NoCollisionPlayer then
+            for _, player in ipairs(Players:GetPlayers()) do
+                -- Lock EVERY player into the ghost group
+                if player.Character then
+                    lockCollision(player.Character, true)
                 end
             end
         end
+        task.wait(2) -- Huge delay = 240 FPS stability
     end
 end)
-
--- Reset everyone when toggle is turned off
-local function resetAll()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            toggleCollisions(player.Character, true)
-        end
-    end
-    collisionStates = {}
-end
