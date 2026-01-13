@@ -31,7 +31,7 @@ end
 task.spawn(function()
     while true do
         removeDebuffs()
-        task.wait(0.1)
+        task.wait(0.3)
     end
 end)
 
