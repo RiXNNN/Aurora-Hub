@@ -3,14 +3,15 @@ local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
 local DIST_THRESHOLD = 6 
-local THROTTLE_TIME = 0.1 
+local THROTTLE_TIME = 0.150 
 local lastUpdate = 0
 local inRangePlayers = {} 
+local katanaCache = {} -- Stores the Katana model so we don't have to "search" every 0.1s
 
-local function toggleCollisions(char, shouldCollide)
+local function toggleCollisions(char, shouldCollide, player)
     if not char then return end
     
-    -- 1. Disable main body parts (Fast)
+    -- 1. Body Parts sweep
     for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
             if part.CanCollide ~= shouldCollide then
@@ -19,12 +20,18 @@ local function toggleCollisions(char, shouldCollide)
         end
     end
 
-    -- 2. Target the Katana specifically via the "Guard" part
-    -- We look for Guard because it's a unique part of the Demonfall sword models
-    local swordPart = char:FindFirstChild("Guard", true)
-    if swordPart and swordPart.Parent then
-        local katanaModel = swordPart.Parent
-        for _, kPart in ipairs(katanaModel:GetDescendants()) do
+    -- 2. Optimized Katana sweep
+    local katana = katanaCache[player]
+    
+    -- If no cache or the katana was deleted (swapped), find it again
+    if not katana or not katana.Parent then
+        local guard = char:FindFirstChild("Guard", true)
+        katana = guard and guard.Parent
+        katanaCache[player] = katana
+    end
+
+    if katana then
+        for _, kPart in ipairs(katana:GetDescendants()) do
             if kPart:IsA("BasePart") then
                 if kPart.CanCollide ~= shouldCollide then
                     kPart.CanCollide = shouldCollide
@@ -38,9 +45,10 @@ RunService.Heartbeat:Connect(function()
     if not getgenv().NoCollisionPlayer then 
         if next(inRangePlayers) ~= nil then
             for player, _ in pairs(inRangePlayers) do
-                if player.Character then toggleCollisions(player.Character, true) end
+                if player.Character then toggleCollisions(player.Character, true, player) end
             end
             inRangePlayers = {}
+            katanaCache = {}
         end
         return 
     end
@@ -63,14 +71,12 @@ RunService.Heartbeat:Connect(function()
                 local distance = (myPos - hisRoot.Position).Magnitude
                 
                 if distance < DIST_THRESHOLD then
-                    -- Keep enforcing while in range so Demonfall scripts don't reset it
-                    toggleCollisions(char, false)
+                    toggleCollisions(char, false, player)
                     inRangePlayers[player] = true
-                else
-                    if inRangePlayers[player] then
-                        toggleCollisions(char, true)
-                        inRangePlayers[player] = nil
-                    end
+                elseif inRangePlayers[player] then
+                    toggleCollisions(char, true, player)
+                    inRangePlayers[player] = nil
+                    -- Don't clear cache here so it's ready if they walk back in range
                 end
             end
         end
