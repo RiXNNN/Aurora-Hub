@@ -55,7 +55,7 @@ TeleportModule.Data = {
         ["Love Breath (Mitsuri)"] = {1179, 1077, -1107},
         ["Beast Breath (Inosuke)"] = {-3106, 779, -6595},
         ["Serpent Breath (Obanai)"] = {-7936, 2430, -824},
-        ["Sanemi Raid NPC"] = {-2512,1161,-1486w},
+        ["Sanemi Raid NPC"] = {-2512,1161,-1486},
         ["Muzan NPC"] = {1992, 1574, -7321},
         ["Kaigaku NPC"] = {-693,695,-1535}
     },
