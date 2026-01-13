@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
 
-local DIST_THRESHOLD = 25 
+local DIST_THRESHOLD = 5 
 local THROTTLE_TIME = 0.2 
 local lastUpdate = 0
 local collisionStates = {} 
