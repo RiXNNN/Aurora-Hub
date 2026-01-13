@@ -2,44 +2,32 @@ if getgenv().__ANTI_DEBUFF_LOADED then return end
 getgenv().__ANTI_DEBUFF_LOADED = true
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-
--- Background debuffs (Always on)
-local BACKGROUND = {
-    Ragdoll = true, Down = true, Combat = true, 
-    Aggro = true, Health = true, Stamina = true
-}
+local LP = Players.LocalPlayer
 
 local function removeDebuffs()
+    local character = LP.Character
     if not character or not character.Parent then return end
 
     for _, obj in ipairs(character:GetChildren()) do
         local n = obj.Name
         
-        -- 1. YOUR BACKGROUND LOGIC
-        if BACKGROUND[n] or n:lower():find("cooldown") then
+        -- [[ BACKGROUND: YOUR EXACT LIST ]]
+        -- These are always removed instantly
+        if n == "Ragdoll" or n == "Down" or n == "Stun" or n == "Combat" 
+        or n == "Aggro" or n == "Health" or n == "Stamina" 
+        or n:lower():find("cooldown") or n:lower():find("activate") or n:lower():find("slow") then
             pcall(function() obj:Destroy() end)
         end
 
-        -- 2. TOGGLE: BUSY (Testing if this fixes speed)
-        if getgenv().NoBusy and n == "Busy" then
-            pcall(function() obj:Destroy() end)
-        end
-
-        -- 3. TOGGLE: STUN
-        if getgenv().NoStun and (n == "Stun" or n:lower():find("activate")) then
-            pcall(function() obj:Destroy() end)
-        end
-        
-        -- 4. TOGGLE: SLOW
-        if getgenv().NoSlow and n:lower():find("slow") then
+        -- [[ TOGGLE CONTROLLED: BUSY ]]
+        -- Only removed when the "No Stun" toggle is ON
+        if getgenv().NoStun and n == "Busy" then
             pcall(function() obj:Destroy() end)
         end
     end
 end
 
--- Your exact loop logic
+-- Your 0.1s Loop
 task.spawn(function()
     while true do
         removeDebuffs()
@@ -47,14 +35,7 @@ task.spawn(function()
     end
 end)
 
--- Your exact respawn logic
-player.CharacterAdded:Connect(function(char)
-    character = char
-    task.wait(1)
-    removeDebuffs()
-end)
-
--- Your exact Fall Damage hook
+-- Your Fall Damage bypass
 local old
 old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
     local args = {...}
