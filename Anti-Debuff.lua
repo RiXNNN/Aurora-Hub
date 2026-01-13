@@ -8,8 +8,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 -- Background debuffs (Always on)
 local BACKGROUND = {
     Ragdoll = true, Down = true, Combat = true, 
-    Aggro = true, Health = true, Stamina = true,
-    Stun= true
+    Aggro = true, Health = true, Stamina = true
 }
 
 local function removeDebuffs()
