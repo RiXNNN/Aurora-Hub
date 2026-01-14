@@ -1,59 +1,54 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+-- Settings
 local RANGE = 15 
-local CHECK_SPEED = 0.05 
-local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "HumanoidRootPart"}
+local CHECK_SPEED = 0.060 
 
-local activeCollisionMap = {} 
+-- R6 Specific Parts
+local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 local function setCollision(char, noCol)
     if not char then return end
-    local charName = char.Name
-    
-    if activeCollisionMap[charName] == noCol then return end 
-    activeCollisionMap[charName] = noCol
-
     for _, partName in ipairs(r6Parts) do
         local part = char:FindFirstChild(partName)
         if part and part:IsA("BasePart") then
+            -- We change CanCollide because it is allowed on the Client (Executor)
+            -- This only affects your screen, so you walk through them
             part.CanCollide = not noCol
-            part.CanTouch = not noCol
-            if noCol then
-                part.Massless = true
-            else
-                part.Massless = false
-            end
         end
     end
 end
 
+-- Main Loop
 task.spawn(function()
     while true do
         if getgenv().NoCollisionPlayer then
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
-            if myRoot then
-                for _, otherPlayer in ipairs(Players:GetPlayers()) do
-                    if otherPlayer ~= LocalPlayer and otherPlayer.Character then
-                        local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            for _, otherPlayer in ipairs(Players:GetPlayers()) do
+                -- Only affect OTHER players, never yourself (or you fall through the floor)
+                if otherPlayer ~= LocalPlayer and otherPlayer.Character then
+                    local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if myRoot and otherRoot then
+                        local distance = (myRoot.Position - otherRoot.Position).Magnitude
                         
-                        if otherRoot then
-                            local distance = (myRoot.Position - otherRoot.Position).Magnitude
-                            setCollision(otherPlayer.Character, distance <= RANGE)
+                        if distance <= RANGE then
+                            setCollision(otherPlayer.Character, true)
+                        else
+                            setCollision(otherPlayer.Character, false)
                         end
                     end
                 end
             end
         else
-            if next(activeCollisionMap) ~= nil then
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character then
-                        setCollision(player.Character, false)
-                    end
+            -- If toggle is OFF, reset everyone EXCEPT yourself
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    setCollision(player.Character, false)
                 end
-                activeCollisionMap = {}
             end
         end
         task.wait(CHECK_SPEED)
