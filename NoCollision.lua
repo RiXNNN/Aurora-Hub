@@ -1,45 +1,60 @@
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Applies no collision to a character
-local function applyCollisionState(char, state)
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = not state
+local RANGE = 15 
+local CHECK_SPEED = 0.055 
+local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "HumanoidRootPart"}
+
+-- This cache stops the script from "re-setting" collision every frame if nothing changed
+local activeCollisionMap = {} 
+
+local function setCollision(char, noCol)
+    if not char then return end
+    local charName = char.Name
+    
+    -- Optimization: Only run if the state actually needs to change
+    if activeCollisionMap[charName] == noCol then return end 
+    activeCollisionMap[charName] = noCol
+
+    for _, partName in ipairs(r6Parts) do
+        local part = char:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            part.CanCollide = not noCol
+            part.CanTouch = not noCol
         end
     end
 end
 
--- Updates all player collisions based on global toggle
-local function updateAllCollisions()
-    local state = getgenv().NoCollisionPlayer
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            applyCollisionState(player.Character, state)
-        end
-    end
-end
-
--- Apply no collision to newly added characters
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        if getgenv().NoCollisionPlayer then
-            task.wait(0.5) -- Wait for character to load
-            applyCollisionState(character, true)
-        end
-    end)
-end)
-
--- Continuously watch for toggle changes
 task.spawn(function()
-    local lastState = getgenv().NoCollisionPlayer
     while true do
-        if getgenv().NoCollisionPlayer ~= lastState then
-            lastState = getgenv().NoCollisionPlayer
-            updateAllCollisions()
+        if getgenv().NoCollisionPlayer then
+            local myChar = LocalPlayer.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+            if myRoot then
+                for _, otherPlayer in ipairs(Players:GetPlayers()) do
+                    if otherPlayer ~= LocalPlayer and otherPlayer.Character then
+                        local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        
+                        if otherRoot then
+                            local distance = (myRoot.Position - otherRoot.Position).Magnitude
+                            -- Only calculate if the distance check passes
+                            setCollision(otherPlayer.Character, distance <= RANGE)
+                        end
+                    end
+                end
+            end
+        else
+            -- Clean reset and clear cache when toggled off
+            if next(activeCollisionMap) ~= nil then
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character then
+                        setCollision(player.Character, false)
+                    end
+                end
+                activeCollisionMap = {}
+            end
         end
-        task.wait(0.1)
+        task.wait(CHECK_SPEED)
     end
 end)
-
--- Initial run
-updateAllCollisions()
