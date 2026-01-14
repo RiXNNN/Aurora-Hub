@@ -1,18 +1,14 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
 local RANGE = 15 
 local CHECK_SPEED = 0.05 
 local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "HumanoidRootPart"}
 
--- This cache stops the script from "re-setting" collision every frame if nothing changed
 local activeCollisionMap = {} 
 
 local function setCollision(char, noCol)
     if not char then return end
     local charName = char.Name
-    
-    -- Optimization: Only run if the state actually needs to change
     if activeCollisionMap[charName] == noCol then return end 
     activeCollisionMap[charName] = noCol
 
@@ -32,32 +28,30 @@ end
 
 task.spawn(function()
     while true do
-        if getgenv().NoCollisionPlayer then
-            local myChar = LocalPlayer.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-
-            if myRoot then
-                for _, otherPlayer in ipairs(Players:GetPlayers()) do
-                    if otherPlayer ~= LocalPlayer and otherPlayer.Character then
-                        local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if myRoot then
+            -- Loop through EVERYTHING in Workspace to find NPCs and Players
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= LocalPlayer.Character then
+                    local isPlayer = Players:GetPlayerFromCharacter(obj)
+                    local otherRoot = obj:FindFirstChild("HumanoidRootPart")
+                    
+                    if otherRoot then
+                        local distance = (myRoot.Position - otherRoot.Position).Magnitude
+                        local shouldNoCol = false
                         
-                        if otherRoot then
-                            local distance = (myRoot.Position - otherRoot.Position).Magnitude
-                            -- Only calculate if the distance check passes
-                            setCollision(otherPlayer.Character, distance <= RANGE)
+                        -- Check if it's a player and if player-no-col is on
+                        if isPlayer and getgenv().NoCollisionPlayer and distance <= RANGE then
+                            shouldNoCol = true
+                        -- Check if it's an NPC and if npc-no-col is on
+                        elseif not isPlayer and getgenv().NoCollisionNPC and distance <= RANGE then
+                            shouldNoCol = true
                         end
+                        
+                        setCollision(obj, shouldNoCol)
                     end
                 end
-            end
-        else
-            -- Clean reset and clear cache when toggled off
-            if next(activeCollisionMap) ~= nil then
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character then
-                        setCollision(player.Character, false)
-                    end
-                end
-                activeCollisionMap = {}
             end
         end
         task.wait(CHECK_SPEED)
