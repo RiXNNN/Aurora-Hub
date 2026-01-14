@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local RANGE = 15 
-local CHECK_SPEED = 0.05 
+local CHECK_SPEED = 0.055 
 local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "HumanoidRootPart"}
 
 -- This cache stops the script from "re-setting" collision every frame if nothing changed
