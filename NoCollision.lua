@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RANGE = 15 
-local CHECK_SPEED = 0.050 
+local CHECK_SPEED = 0.060 
 
 -- We EXCLUDE HumanoidRootPart to stop them from falling through the floor
 local LimbParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg", "UpperTorso", "LowerTorso", "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"}
