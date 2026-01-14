@@ -4,15 +4,16 @@ local LocalPlayer = Players.LocalPlayer
 local groupName = "AuroraNoCol"
 
 -- Settings
-local RANGE = 15 
-local CHECK_WAIT = 0.060 -- Your requested speed
+local RANGE = 15 -- Adjust this number for how close you need to be
+local CHECK_SPEED = 0.060 -- 17 checks per second
 
--- Engine Setup
+-- Create Collision Group
 pcall(function()
     PhysicsService:RegisterCollisionGroup(groupName)
 end)
 PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
 
+-- R6 Specific Parts
 local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 local function setCollision(char, noCol)
@@ -26,18 +27,7 @@ local function setCollision(char, noCol)
     end
 end
 
--- RAYFIELD TOGGLE EXAMPLE
--- Replace your existing Toggle code with this:
-local Toggle = Tab:CreateToggle({
-   Name = "No Collision (Range)",
-   CurrentValue = false,
-   Flag = "NoColToggle", 
-   Callback = function(Value)
-       getgenv().NoCollisionPlayer = Value -- Sets the global variable
-   end,
-})
-
--- The Background Loop (Always running, waiting for the toggle)
+-- Main Loop
 task.spawn(function()
     while true do
         if getgenv().NoCollisionPlayer then
@@ -51,7 +41,7 @@ task.spawn(function()
                     if myRoot and otherRoot then
                         local distance = (myRoot.Position - otherRoot.Position).Magnitude
                         
-                        -- Apply no-collision only if within range
+                        -- Apply no-collision if within range
                         if distance <= RANGE then
                             setCollision(otherPlayer.Character, true)
                         else
@@ -61,14 +51,13 @@ task.spawn(function()
                 end
             end
         else
-            -- If toggle is OFF, reset everyone to Default once
+            -- If toggle is OFF, reset everyone
             for _, player in ipairs(Players:GetPlayers()) do
                 if player.Character then
                     setCollision(player.Character, false)
                 end
             end
         end
-        
-        task.wait(CHECK_WAIT)
+        task.wait(CHECK_SPEED)
     end
 end)
