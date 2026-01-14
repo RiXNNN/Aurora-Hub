@@ -10,107 +10,54 @@ local LocalPlayer = Players.LocalPlayer
 local RANGE = 15
 local CHECK_SPEED = 0.05
 
-local localPartsCache = {}
-local ragdolled = false
+local collisionState = {}
 
-local function cacheLocalParts(char)
-    localPartsCache = {}
-    for _, obj in ipairs(char:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            localPartsCache[obj] = obj.CanCollide
-        end
-    end
+local function isRagdolled(player)
+    return Workspace:FindFirstChild(player.Name .. ":Ragdoll") ~= nil
 end
 
-local function setLocalCollision(enabled)
-    local char = LocalPlayer.Character
+local function setOtherCollision(char, enabled)
     if not char then return end
 
-    for part, original in pairs(localPartsCache) do
-        if part and part.Parent then
-            part.CanCollide = enabled and original or false
-        end
-    end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    if collisionState[char] == enabled then return end
+    collisionState[char] = enabled
+
+    root.CanCollide = enabled
 end
-
-local function ragdollExists()
-    return Workspace:FindFirstChild(LocalPlayer.Name .. ":Ragdoll") ~= nil
-end
-
-local function hookRagdollWatcher()
-    ragdolled = ragdollExists()
-    if ragdolled then
-        setLocalCollision(true)
-    end
-
-    Workspace.ChildAdded:Connect(function(child)
-        if child.Name == LocalPlayer.Name .. ":Ragdoll" then
-            ragdolled = true
-            setLocalCollision(true)
-        end
-    end)
-
-    Workspace.ChildRemoved:Connect(function(child)
-        if child.Name == LocalPlayer.Name .. ":Ragdoll" then
-            ragdolled = false
-        end
-    end)
-end
-
-local function hasClearPath(fromPos, toPos)
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {LocalPlayer.Character}
-
-    local result = Workspace:Raycast(fromPos, toPos - fromPos, params)
-    if not result then
-        return true
-    end
-
-    if result.Instance:IsDescendantOf(Players) then
-        return true
-    end
-
-    return false
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.1)
-    cacheLocalParts(char)
-    task.wait(0.05)
-    hookRagdollWatcher()
-end)
 
 task.spawn(function()
     while true do
         if getgenv().NoCollisionPlayer then
-            if not ragdolled then
-                local myChar = LocalPlayer.Character
-                local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local myChar = LocalPlayer.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
-                if myRoot then
-                    local allowNoclip = false
+            if myRoot then
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer then
+                        local char = player.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart")
 
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer and player.Character then
-                            local root = player.Character:FindFirstChild("HumanoidRootPart")
-                            if root then
+                        if root then
+                            if isRagdolled(player) then
+                                setOtherCollision(char, true)
+                            else
                                 local dist = (myRoot.Position - root.Position).Magnitude
-                                if dist <= RANGE then
-                                    if hasClearPath(myRoot.Position, root.Position) then
-                                        allowNoclip = true
-                                        break
-                                    end
-                                end
+                                setOtherCollision(char, dist > RANGE)
                             end
                         end
                     end
-
-                    setLocalCollision(not allowNoclip)
                 end
             end
         else
-            setLocalCollision(true)
+            for char in pairs(collisionState) do
+                if char and char.Parent then
+                    setOtherCollision(char, true)
+                end
+            end
+            collisionState = {}
         end
 
         task.wait(CHECK_SPEED)
