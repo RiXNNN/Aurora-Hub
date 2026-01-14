@@ -2,64 +2,87 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
+local groupName = "AuroraNoCol"
 
-local RANGE = 15
-local CHECK_SPEED = 0.05
+pcall(function()
+    PhysicsService:CreateCollisionGroup(groupName)
+end)
 
-local collisionState = {}
+-- IMPORTANT FIX:
+PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
+PhysicsService:CollisionGroupSetCollidable(groupName, "Default", false)
+PhysicsService:CollisionGroupSetCollidable("Default", groupName, false)
 
-local function isRagdolled(player)
-    return Workspace:FindFirstChild(player.Name .. ":Ragdoll") ~= nil
-end
-
-local function setOtherCollision(char, enabled)
-    if not char then return end
-
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    if collisionState[char] == enabled then return end
-    collisionState[char] = enabled
-
-    root.CanCollide = enabled
-end
-
-task.spawn(function()
-    while true do
-        if getgenv().NoCollisionPlayer then
-            local myChar = LocalPlayer.Character
-            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-
-            if myRoot then
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer then
-                        local char = player.Character
-                        local root = char and char:FindFirstChild("HumanoidRootPart")
-
-                        if root then
-                            if isRagdolled(player) then
-                                setOtherCollision(char, true)
-                            else
-                                local dist = (myRoot.Position - root.Position).Magnitude
-                                setOtherCollision(char, dist > RANGE)
-                            end
-                        end
-                    end
-                end
-            end
-        else
-            for char in pairs(collisionState) do
-                if char and char.Parent then
-                    setOtherCollision(char, true)
-                end
-            end
-            collisionState = {}
+local function applyCollisionState(char, state)
+    local group = state and groupName or "Default"
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CollisionGroup = group
         end
+    end
+end
 
-        task.wait(CHECK_SPEED)
+-- PLAYER (LOCAL ONLY)
+local function updateLocalPlayer()
+    local char = LocalPlayer.Character
+    if char then
+        applyCollisionState(char, getgenv().NoCollisionPlayer)
+    end
+end
+
+-- NPC SUPPORT
+local function isNPC(model)
+    return model:IsA("Model")
+        and model:FindFirstChildOfClass("Humanoid")
+        and not Players:GetPlayerFromCharacter(model)
+end
+
+local function updateNPCs()
+    for _, obj in ipairs(workspace:GetChildren()) do
+        if isNPC(obj) then
+            applyCollisionState(obj, getgenv().NoCollisionNPC)
+        end
+    end
+end
+
+-- Character respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.3)
+    updateLocalPlayer()
+end)
+
+-- Watch for NPC spawns
+workspace.ChildAdded:Connect(function(child)
+    task.wait(0.2)
+    if getgenv().NoCollisionNPC and isNPC(child) then
+        applyCollisionState(child, true)
     end
 end)
+
+-- Toggle watcher (low cost)
+task.spawn(function()
+    local lastPlayer = getgenv().NoCollisionPlayer
+    local lastNPC = getgenv().NoCollisionNPC
+
+    while true do
+        if getgenv().NoCollisionPlayer ~= lastPlayer then
+            lastPlayer = getgenv().NoCollisionPlayer
+            updateLocalPlayer()
+        end
+
+        if getgenv().NoCollisionNPC ~= lastNPC then
+            lastNPC = getgenv().NoCollisionNPC
+            updateNPCs()
+        end
+
+        task.wait(0.1)
+    end
+end)
+
+-- Initial apply
+updateLocalPlayer()
+updateNPCs()
