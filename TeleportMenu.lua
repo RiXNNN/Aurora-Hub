@@ -39,8 +39,8 @@ TeleportModule.Data = {
         ["Hayakawa Soup Shop"] = {560,755,-2364},
         ["Slayer Corps Soup Shop"] = {-1362, 871, -6128},
         ["Hayakawa Trinket Merchant"] = {814,757,-2251},
-        ["Okuiya Trinket Merchant"] = {-4199, 834, 141}
-        ["BlackSmith"] = {-1422,871,-6314}
+        ["Okuiya Trinket Merchant"] = {-4199, 834, 141},
+        ["BlackSmith"] = {-1422,871,-6314},
         ["Kaigaku Sword"] = {-693,695,-1535}
     },
     Trainers_NPCs = {
@@ -59,7 +59,7 @@ TeleportModule.Data = {
         ["Serpent Breath (Obanai)"] = {994,1070,-1138},
         ["Sanemi Raid NPC"] = {-2512,1161,-1486},
         ["Muzan NPC"] = {1992, 1574, -7321},
-        ["End Mist Maze NPC"] = {-7936,2430,-824},
+        ["End Mist Maze NPC"] = {-7936,2430,-824}
     },
     Bosses = {
         ["Zenitsu"] = {-2636,803,-3167},
