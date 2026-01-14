@@ -5,7 +5,7 @@ local LocalPlayer = Players.LocalPlayer
 local RANGE = 15 
 local CHECK_SPEED = 0.060 
 
--- Only limbs (Removing HumanoidRootPart from here stops the freezing/stucking)
+-- Only limbs (Root stays solid to prevent freezing)
 local r6Parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 local function setCollision(char, noCol)
@@ -13,31 +13,41 @@ local function setCollision(char, noCol)
     for _, partName in ipairs(r6Parts) do
         local part = char:FindFirstChild(partName)
         if part and part:IsA("BasePart") then
-            -- This is your logic: just simple CanCollide
+            -- 1. YOUR LOGIC
             part.CanCollide = not noCol
+            
+            -- 2. THE ANTI-FLING FIX (Zero Friction & No Touch)
+            if noCol then
+                part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0) -- Makes them "slippery" so no fling
+                local touch = part:FindFirstChildOfClass("TouchTransmitter")
+                if touch then touch:Destroy() end -- Removes the "hit" detection
+            else
+                part.CustomPhysicalProperties = nil -- Resets to normal
+            end
         end
     end
 end
 
--- Main Loop
+-- Main Loop (The CPU-Friendly task.spawn you like)
 task.spawn(function()
     while true do
         if getgenv().NoCollisionPlayer then
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
-            for _, otherPlayer in ipairs(Players:GetPlayers()) do
-                if otherPlayer ~= LocalPlayer and otherPlayer.Character then
-                    local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    
-                    if myRoot and otherRoot then
-                        local distance = (myRoot.Position - otherRoot.Position).Magnitude
+            if myRoot then
+                for _, otherPlayer in ipairs(Players:GetPlayers()) do
+                    if otherPlayer ~= LocalPlayer and otherPlayer.Character then
+                        local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
                         
-                        -- If close, turn off collision for limbs ONLY
-                        if distance <= RANGE then
-                            setCollision(otherPlayer.Character, true)
-                        else
-                            setCollision(otherPlayer.Character, false)
+                        if otherRoot then
+                            local distance = (myRoot.Position - otherRoot.Position).Magnitude
+                            
+                            if distance <= RANGE then
+                                setCollision(otherPlayer.Character, true)
+                            else
+                                setCollision(otherPlayer.Character, false)
+                            end
                         end
                     end
                 end
