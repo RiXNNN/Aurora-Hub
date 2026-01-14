@@ -1,1 +1,54 @@
-local v0=string['char'];local v1=string['byte'];local v2=string['sub'];local v3=bit32 or bit ;local v4=v3['bxor'];local v5=table['concat'];local v6=table['insert'];local function v7(v17,v18) local v19={};for v28=1, #v17 do v6(v19,v0(v4(v1(v2(v17,v28,v28 + (2 -1) )),v1(v2(v18,(620 -(555 + 64)) + (v28% #v18) ,(2 -1) + (v28% #v18) + 1 )))%(493 -237) ));end return v5(v19);end local v8=game:GetService(v7("\225\207\218\60\227\169\212","\126\177\163\187\69\134\219\167"));local v9=game:GetService(v7("\17\216\36\246\249\49\219\35\198\249","\156\67\173\74\165"));local v10=v8['LocalPlayer'];local v11=3;local v12=0.15 -0 ;local v13=568 -(367 + 201) ;local v14={};local v15={};local function v16(v20,v21,v22) if  not v20 then return;end for v29,v30 in ipairs(v20:GetChildren()) do if v30:IsA(v7("\22\182\90\19\140\39\84\32","\38\84\215\41\118\220\70")) then if (v30['CanCollide']~=v21) then v30['CanCollide']=v21;end end end local v23=v15[v22];if ( not v23 or  not v23['Parent']) then local v33=v20:FindFirstChild(v7("\119\3\35\0\250","\158\48\118\66\114"),true);v23=v33 and v33['Parent'] ;v15[v22]=v23;end if v23 then for v35,v36 in ipairs(v23:GetDescendants()) do if v36:IsA(v7("\137\37\3\51\67\164\233\191","\155\203\68\112\86\19\197")) then if (v36['CanCollide']~=v21) then v36['CanCollide']=v21;end end end end end v9['Heartbeat']:Connect(function() if  not getgenv()['NoCollisionPlayer'] then if (next(v14)~=nil) then for v40,v41 in pairs(v14) do if v40['Character'] then v16(v40.Character,true,v40);end end v14={};v15={};end return;end local v24=tick();if ((v24-v13)<v12) then return;end v13=v24;local v25=v10['Character'];local v26=v25 and v25:FindFirstChild(v7("\110\200\59\253\78\119\236\252\116\210\57\232\112\121\247\236","\152\38\189\86\156\32\24\133")) ;if  not v26 then return;end local v27=v26['Position'];for v31,v32 in ipairs(v8:GetPlayers()) do if ((v32~=v10) and v32['Character']) then local v37=v32['Character'];local v38=v37:FindFirstChild(v7("\212\66\170\71\242\88\174\66\206\88\168\82\204\86\181\82","\38\156\55\199"));if v38 then local v42=(v27-v38['Position'])['Magnitude'];if (v42<v11) then v16(v37,false,v32);v14[v32]=true;elseif v14[v32] then v16(v37,true,v32);v14[v32]=nil;end end end end end);
+local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
+local groupName = "AuroraNoCol"
+
+-- Engine Setup (Internal)
+pcall(function()
+    PhysicsService:RegisterCollisionGroup(groupName)
+end)
+PhysicsService:CollisionGroupSetCollidable(groupName, groupName, false)
+
+local function applyCollisionState(char, state)
+    local group = state and groupName or "Default"
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CollisionGroup = group
+        end
+    end
+end
+
+-- This function replaces the laggy loop
+local function updateAllCollisions()
+    local state = getgenv().NoCollisionPlayer
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            applyCollisionState(player.Character, state)
+        end
+    end
+end
+
+-- Listener for new players joining while toggle is ON
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if getgenv().NoCollisionPlayer then
+            task.wait(0.5) -- Wait for character to fully load
+            applyCollisionState(character, true)
+        end
+    end)
+end)
+
+-- Main logic trigger
+-- This checks if the global variable changed and updates accordingly
+task.spawn(function()
+    local lastState = getgenv().NoCollisionPlayer
+    while true do
+        if getgenv().NoCollisionPlayer ~= lastState then
+            lastState = getgenv().NoCollisionPlayer
+            updateAllCollisions()
+        end
+        task.wait(0.1) -- Only checks state twice a second (zero lag)
+    end
+end)
+
+-- Initial run
+updateAllCollisions()
