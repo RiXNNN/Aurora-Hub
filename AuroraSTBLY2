@@ -1,1 +1,1 @@
-https://raw.githubusercontent.com/RiXNNN/Aurora-Hub/refs/heads/main/AuroraSTub.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/RiXNNN/Aurora-Hub/refs/heads/main/AuroraSTub.lua", true))()
