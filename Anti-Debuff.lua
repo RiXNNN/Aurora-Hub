@@ -1,50 +1,39 @@
---================================
---    THE "CRAZY MAN" HYBRID
---================================
-
-getgenv().NoStun = false -- Linked to Rayfield Toggle
-_G.FallCushion = true    -- Always on background
+getgenv().NoStun = false 
+_G.FallCushion = true    
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 
 local DEBUFFS = {
-    Busy = true,
-    Stun = true,
-    Combat = true,
-    Aggro = true,
-    Health = true,
-    Stamina = true,
+    ["Busy"] = true,
+    ["Stun"] = true,
+    ["Combat"] = true,
+    ["Aggro"] = true,
+    ["Health"] = true,
+    ["Stamina"] = true,
+    ["Ragdoll"] = true
 }
 
-local function removeDebuffs()
-    if not getgenv().NoStun then return end -- BUTTON CHECK
-    if not character or not character.Parent then return end
-
-    for _, obj in ipairs(character:GetChildren()) do
-        local n = obj.Name
-        if DEBUFFS[n]
-        or n:lower():find("cooldown")
-        or n:lower():find("activate") then
-            pcall(function()
+-- [ THE FRAME-BY-FRAME KILLER ]
+RunService.Heartbeat:Connect(function()
+    if getgenv().NoStun and character then
+        -- This is the fastest possible check in Roblox
+        local children = character:GetChildren()
+        for i = 1, #children do
+            local obj = children[i]
+            local name = obj.Name
+            
+            if DEBUFFS[name] or name:lower():find("cooldown") or name:lower():find("activate") then
+                obj.Parent = nil -- Moving to nil is faster than Destroy() for bypassing stuns
                 obj:Destroy()
-            end)
+            end
         end
-    end
-end
-
--- 1. THE DEBUFF LOOP (Controlled by Button)
-task.spawn(function()
-    while true do
-        if getgenv().NoStun then
-            removeDebuffs()
-        end
-        task.wait(0.1) -- 10 times a second for speed
     end
 end)
 
--- 2. THE "CRAZY MAN" FALL CUSHION (Always Background)
+-- [ THE "CRAZY MAN" FALL CUSHION ]
 task.spawn(function()
     while task.wait() do
         local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -63,9 +52,9 @@ task.spawn(function()
     end
 end)
 
--- 3. AUTO-ESCAPE (Background)
+-- [ AUTO-ESCAPE ]
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.4) do
         if character and character:FindFirstChild("Down") then
             local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Async")
             remote:FireServer("Character", "FallDamageServer", 10000)
@@ -74,7 +63,6 @@ task.spawn(function()
     end
 end)
 
--- Respawn Fix
 player.CharacterAdded:Connect(function(char)
     character = char
 end)
