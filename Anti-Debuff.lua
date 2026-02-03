@@ -22,7 +22,7 @@ local function removeDebuffs()
         
         -- [[ ALWAYS REMOVE (Non-Toggle) ]]
         -- Removed "Stun" from here so the toggle can control it
-        if n == "Combat" or n == "Aggro" or n == "Health" or n == "Stamina" 
+        if n == "Combat" or n == "Aggro" or n == "Health" or n == "Stamina" or n == "Ragdoll"
         or n:lower():find("cooldown") or n:lower():find("activate") or n:lower():find("slow") then
             pcall(function() obj:Destroy() end)
         end
