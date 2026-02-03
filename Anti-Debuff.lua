@@ -1,1 +1,58 @@
-local v0=string['char'];local v1=string['byte'];local v2=string['sub'];local v3=bit32 or bit ;local v4=v3['bxor'];local v5=table['concat'];local v6=table['insert'];local function v7(v13,v14) local v15={};for v20=1, #v13 do v6(v15,v0(v4(v1(v2(v13,v20,v20 + (2 -1) )),v1(v2(v14,(2 -1) + (v20% #v14) ,1 + (v20% #v14) + (1 -0) )))%256 ));end return v5(v15);end if getgenv()['__ANTI_DEBUFF_LOADED'] then return;end getgenv()['__ANTI_DEBUFF_LOADED']=true;local v9=game:GetService(v7("\225\207\218\60\227\169\212","\126\177\163\187\69\134\219\167"));local v10=v9['LocalPlayer'];local function v11() local v16=v10['Character'];if ( not v16 or  not v16['Parent']) then return;end local v17=v16:FindFirstChildOfClass(v7("\11\216\39\196\242\44\196\46","\156\67\173\74\165"));if v17 then v17['JumpPower']=154 -94 ;v17['UseJumpPower']=true;end for v21,v22 in ipairs(v16:GetChildren()) do local v23=v22['Name'];if ((v23==v7("\6\182\78\18\179\42\74","\38\84\215\41\118\220\70")) or (v23==v7("\116\25\53\28","\158\48\118\66\114")) or (v23==v7("\152\48\5\56","\155\203\68\112\86\19\197")) or (v23==v7("\101\210\59\254\65\108","\152\38\189\86\156\32\24\133")) or (v23==v7("\221\80\160\84\243","\38\156\55\199")) or (v23==v7("\128\120\125\36\7\124","\35\200\29\28\72\115\20\154")) or (v23==v7("\42\171\208\210\132\34\53","\84\121\223\177\191\237\76")) or v23:lower():find(v7("\184\89\198\172\62\95\39\207","\161\219\54\169\192\90\48\80")) or v23:lower():find(v7("\72\65\20\44\95\67\20\32","\69\41\34\96")) or v23:lower():find(v7("\175\207\216\29","\75\220\163\183\106\98"))) then pcall(function() v22:Destroy();end);end if (getgenv()['NoStun'] and (v23==v7("\32\175\152\46","\185\98\218\235\87"))) then pcall(function() v22:Destroy();end);end end end task.spawn(function() while true do v11();task.wait(0.15);end end);local v12;v12=hookmetamethod(game,v7("\244\3\41\231\211\175\200\61\43\234","\202\171\92\71\134\190"),newcclosure(function(v18,...) local v19={...};if ((getnamecallmethod()==v7("\15\200\62\141\26\196\62\158\44\211","\232\73\161\76")) and (v19[2]==v7("\157\216\78\81\58\186\212\67\90\27\136\220\80\75\27\169","\126\219\185\34\61"))) then return task.wait(9000000107 -(555 + 64) );end return v12(v18,...);end));
+if getgenv().__ANTI_DEBUFF_LOADED then return end
+getgenv().__ANTI_DEBUFF_LOADED = true
+
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local TargetRemote = game:GetService("ReplicatedStorage").Remotes.Async
+
+local function removeDebuffs()
+    local character = LP.Character
+    if not character or not character.Parent then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    -- [[ JUMPPOWER FIX ]]
+    if humanoid then
+        humanoid.JumpPower = 60
+        humanoid.UseJumpPower = true
+    end
+
+    for _, obj in ipairs(character:GetChildren()) do
+        local n = obj.Name
+        
+        -- [[ BACKGROUND: ALWAYS REMOVE ]]
+        if n == "Stun" or n == "Combat" 
+        or n == "Aggro" or n == "Health" or n == "Stamina" 
+        or n:lower():find("cooldown") or n:lower():find("activate") or n:lower():find("slow") then
+            pcall(function() obj:Destroy() end)
+        end
+
+        -- [[ TOGGLE CONTROLLED: BUSY ]]
+        if getgenv().NoStun and n == "Busy" then
+            pcall(function() obj:Destroy() end)
+        end
+    end
+end
+
+-- Your 0.3s Loop
+task.spawn(function()
+    while true do
+        removeDebuffs()
+        task.wait(0.150)
+    end
+end)
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = table.pack(...)
+    
+    -- Check for the exact FallDamageServer call found in your constants
+    if self.Name == "Async" and args[2] == "FallDamageServer" then
+        -- Force the damage (Arg 3) to be 0 before it hits the server
+        args[3] = 0
+        return oldNamecall(self, table.unpack(args))
+    end
+    
+    return oldNamecall(self, ...)
+end)
