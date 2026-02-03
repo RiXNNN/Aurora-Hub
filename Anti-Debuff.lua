@@ -11,11 +11,11 @@ local character = player.Character or player.CharacterAdded:Wait()
 
 local DEBUFFS = {
     Busy = true,
-    Ragdoll = true,
     Stun = true,
     Combat = true,
     Aggro = true,
-    -- Down is removed here because your Auto-Escape handles it separately
+    Health = true,
+    Stamina = true,
 }
 
 local function removeDebuffs()
