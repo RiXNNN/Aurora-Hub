@@ -44,13 +44,18 @@ task.spawn(function()
 end)
 
 -- Fall Damage Hook
+-- UPDATE YOUR EXISTING HOOK TO THIS:
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local method = getnamecallmethod()
     local args = table.pack(...)
     
     if self.Name == "Async" and args[2] == "FallDamageServer" then
-        args[3] = 0
+        -- Only set to 0 if the damage is "normal" fall damage.
+        -- If we sent 50000, let it pass so we actually die.
+        if args[3] < 10000 then 
+            args[3] = 0
+        end
         return oldNamecall(self, table.unpack(args))
     end
     
